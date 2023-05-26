@@ -12,7 +12,7 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --filename "/g/strcombio/fsupek_
 												--max_fraction_removed_trinucs 0.5 \
 												--acceleration_score 1 \
 												--euclidean_change_ratio 0.1,1.1 \
-												--memory_process1 9 \
+												--memory_process1 16 \
 												--memory_process2 40 \
 												--utils /g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R \
 												--good_mappability_regions /g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed \

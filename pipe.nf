@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-process 1_run_trinuc_matching {
+process run_trinuc_matching {
 
     time = { (params.maxTime + 0.25).hour }
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
@@ -42,7 +42,7 @@ process 1_run_trinuc_matching {
     """
 }
 
-process 2_apply_trinuc_matching_to_tracks {
+process apply_trinuc_matching_to_tracks {
 
     time = { 2.hour }
     memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }

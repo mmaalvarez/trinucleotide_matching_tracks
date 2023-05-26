@@ -1,0 +1,50 @@
+May-26 19:46:21.679 [main] DEBUG nextflow.cli.Launcher - $> nextflow -log /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/log/nextflow.log run pipe.nf --filename /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords --stoppingCriterion 0.01 --maxTime 8 --max_fraction_removed_trinucs 0.5 --acceleration_score 1 --euclidean_change_ratio 0.1,1.1 --memory_process1 16 --memory_process2 40 --utils /g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R --good_mappability_regions /g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed -resume
+May-26 19:46:21.754 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 22.10.6
+May-26 19:46:21.775 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/home/malvarez/.nextflow/plugins; core-plugins: nf-amazon@1.11.3,nf-azure@0.14.2,nf-codecommit@0.1.2,nf-console@1.0.4,nf-ga4gh@1.0.4,nf-google@1.4.5,nf-tower@1.5.6,nf-wave@0.5.3
+May-26 19:46:21.790 [main] INFO  org.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+May-26 19:46:21.791 [main] INFO  org.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+May-26 19:46:21.794 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.4.1 in 'deployment' mode
+May-26 19:46:21.805 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+May-26 19:46:21.824 [main] DEBUG nextflow.config.ConfigBuilder - Found config local: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/nextflow.config
+May-26 19:46:21.825 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/nextflow.config
+May-26 19:46:21.862 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+May-26 19:46:22.715 [main] DEBUG nextflow.cli.CmdRun - Applied DSL=1 by probing script field
+May-26 19:46:22.742 [main] INFO  nextflow.cli.CmdRun - Launching `pipe.nf` [ridiculous_hopper] DSL1 - revision: 718275bbc6
+May-26 19:46:22.743 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+May-26 19:46:22.743 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins resolved requirement=[]
+May-26 19:46:22.755 [main] DEBUG nextflow.secret.LocalSecretsProvider - Secrets store: /home/malvarez/.nextflow/secrets/store.json
+May-26 19:46:22.759 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@7100dea] - activable => nextflow.secret.LocalSecretsProvider@7100dea
+May-26 19:46:22.863 [main] DEBUG nextflow.Session - Session UUID: c92527f8-14dc-4fb2-b6c0-1653ae3b88ab
+May-26 19:46:22.863 [main] DEBUG nextflow.Session - Run name: ridiculous_hopper
+May-26 19:46:22.863 [main] DEBUG nextflow.Session - Executor pool size: 72
+May-26 19:46:22.879 [main] DEBUG nextflow.util.ThreadPoolBuilder - Creating thread pool 'FileTransfer' minSize=10; maxSize=216; workQueue=LinkedBlockingQueue[10000]; allowCoreThreadTimeout=false
+May-26 19:46:22.921 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 22.10.6 build 5843
+  Created: 23-01-2023 23:20 UTC (24-01-2023 00:20 CEST)
+  System: Linux 3.10.0-693.2.2.el7.x86_64
+  Runtime: Groovy 3.0.13 on OpenJDK 64-Bit Server VM 17.0.3-internal+0-adhoc..src
+  Encoding: UTF-8 (UTF-8)
+  Process: 25264@fsupeksvr.irbbarcelona.pcb.ub.es [10.5.4.116]
+  CPUs: 72 - Mem: 251.6 GB (5 GB) - Swap: 4 GB (0)
+May-26 19:46:22.957 [main] DEBUG nextflow.Session - Work-dir: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/work [nfs]
+May-26 19:46:22.976 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+May-26 19:46:22.988 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+May-26 19:46:23.038 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+May-26 19:46:23.054 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 73; maxThreads: 1000
+May-26 19:46:23.137 [main] DEBUG nextflow.Session - Session start
+May-26 19:46:23.143 [main] DEBUG nextflow.trace.TraceFileObserver - Workflow started -- trace file: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/trace
+May-26 19:46:23.701 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+May-26 19:46:23.771 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: slurm
+May-26 19:46:23.771 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'slurm'
+May-26 19:46:23.781 [main] DEBUG nextflow.executor.Executor - [warm up] executor > slurm
+May-26 19:46:23.789 [main] DEBUG n.processor.TaskPollingMonitor - Creating task monitor for executor 'slurm' > capacity: 100; pollInterval: 5s; dumpInterval: 5m 
+May-26 19:46:23.792 [main] DEBUG n.processor.TaskPollingMonitor - Creating submit rate limit of 1 submissions per 1 seconds
+May-26 19:46:23.798 [main] DEBUG n.executor.AbstractGridExecutor - Creating executor 'slurm' > queue-stat-interval: 1m
+May-26 19:46:23.966 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: slurm
+May-26 19:46:23.967 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'slurm'
+May-26 19:46:24.006 [main] DEBUG nextflow.Session - Workflow process names [dsl1]: run_trinuc_matching, apply_trinuc_matching_to_tracks
+May-26 19:46:24.007 [main] DEBUG nextflow.script.ScriptRunner - > Awaiting termination 
+May-26 19:46:24.008 [main] DEBUG nextflow.Session - Session await
+May-26 19:46:24.101 [Actor Thread 5] DEBUG nextflow.util.CacheHelper - Unable to get file attributes file: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords -- Cause: java.nio.file.NoSuchFileException: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords
+May-26 19:46:24.324 [Task submitter] DEBUG nextflow.executor.GridTaskHandler - [SLURM] submitted process run_trinuc_matching > jobId: 13813752; workDir: /g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/trinucleotide_matching_tracks/work/c6/a348df7e41a8d56d5b337c6e672a01
+May-26 19:46:24.324 [Task submitter] INFO  nextflow.Session - [c6/a348df] Submitted process > run_trinuc_matching
