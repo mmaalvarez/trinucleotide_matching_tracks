@@ -4,6 +4,8 @@ It first converts the track file into a data.frame with N rows (1 per genomic co
 
 Not downsampling coordinates with too few counts
 
+You can process several track files in parallel
+
 ### Iterate until:
 
 - Trinucleotide count frequencies match across coordinates (Euclidean distance)
@@ -11,22 +13,16 @@ Not downsampling coordinates with too few counts
 - Max. number of iterations reached
 - Max. time reached
 
-
 ## How to use
 
-In run_nf.sh, at --filename "XXX" you have to type the path+name of the bed-formatted tracks file WITHOUT its extension (.bed, .bw, .tsv...), and prepend the absolute path:
-`--filename "/full/path/my_bed_file_name" \`
+You have to add to $PWD/input/file_paths.tsv the absolute path + file name of each of the bed-formatted track files you want to process, one per row (see $PWD/input/file_paths_example.txt)
 
 To run the pipeline, execute run_nf.sh:
 `bash run_nf.sh`
 
-
 ## Other
 
-It uses a container at data/users/malvarez/projects/RepDefSig/containers/regressions/container.sif
-- Its .def file is container_def/container.def
-- It actually includes libraries not used in this pipeline
+"good_mappability_regions" (called $PWD/crg75/CRG75_nochr.bed, see example of how the first lines should look) were obtained from https://hgdownload.cse.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/wgEncodeCrgMapabilityAlign75mer.bigWig
 
-The 'trinuc_matching' function is sourced from data/users/malvarez/projects/RepDefSig/bin/utils.R
-
-good_mappability_regions are from home/mmunteanu/reference/CRG75_nochr.bed
+To build the container, run in $PWD/container: 
+`sudo singularity build container.sif container.def`

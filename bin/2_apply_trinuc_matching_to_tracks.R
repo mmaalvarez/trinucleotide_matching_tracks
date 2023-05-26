@@ -3,8 +3,6 @@ library(data.table)
 library(dtplyr)
 library(GenomicRanges)
 library(rtracklayer)
-library(valr)
-library("BSgenome.Hsapiens.UCSC.hg19")
 library(spgs)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
@@ -19,7 +17,9 @@ conflict_prefer("reduce", "IRanges")
 conflict_prefer("desc", "dplyr")
 conflict_prefer("reverseComplement", "spgs")
 
+
 args = commandArgs(trailingOnly=TRUE)
+
 
 ## load files from 2nd process
 
@@ -43,39 +43,18 @@ sequences = ifelse(interactive(),
                    no = args[4]) %>% 
   read_tsv()
 
+filename = ifelse(interactive(),
+                   yes = "filename.tsv",
+                   no = args[5]) %>% 
+  read_tsv() %>% pull(filename)
+
+# source of rm_n_trinucs_at_random_indices() function
+trinuc_matching_source = ifelse(interactive(),
+                                yes = "utils.R",
+                                no = args[6])
+
 
 ## within each coordinate, randomly remove as many trinucleotides from each type as have been removed with trinuc_matching, and keep track of their positions
-
-rm_n_trinucs_at_random_indices = function(removed_trinucs, trinuc32, sequences){
-  
-  # init stuff for while loop
-  matches = c(1,2)
-  niters = 0
-  # remove sample_n_matches in case it exists from before, otherwise if not created in the while loop it will pass again as if it were new
-  if(exists("sample_n_matches")){
-    rm(sample_n_matches)
-  }
-  
-  # "min(diff(matches))<3" should ensure that the removed trinucs do not overlap (maybe not so important anyway)
-  while(removed_trinucs>0 & min(diff(matches))<3 & niters<1e6){
-    
-    matches = as.numeric(gregexpr(trinuc32, sequences)[[1]])
-    
-    # if there are many "NNNNNN.." in the sequence, it could be that less trinuc match than the "removed_trinucs"
-    n_trinucs_to_remove = min(removed_trinucs, length(matches))
-    
-    sample_n_matches = sort(sample(matches,
-                                   n_trinucs_to_remove,
-                                   replace = F))
-    niters = niters + 1
-  }
-  
-  if(exists("sample_n_matches") && !is.null(sample_n_matches) && niters<1e6){
-    return(sample_n_matches)
-  } else {
-    return(NA)
-  }
-}
 
 matched_tracks_granges = full_tracks_trinuc32_freq %>%
   column_to_rownames("bin") %>% 
@@ -92,7 +71,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
                names_to = 'trinuc32',
                values_to = 'removed_trinucs') %>% 
   # include reverse complement for each trinuc32, so it's actually trinuc64
-  mutate(trinuc32 = paste0(trinuc32, "|", spgs::reverseComplement(trinuc32, case="upper"))) %>% 
+  mutate(trinuc32 = paste0(trinuc32, "|", reverseComplement(trinuc32, case="upper"))) %>% 
   ## do the removing thing
   rowwise() %>% 
   mutate(new_end = list(rm_n_trinucs_at_random_indices(removed_trinucs, trinuc32, sequences))) %>% 
@@ -124,6 +103,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
          "end" = "new_end") %>%
   arrange(seqnames, start, end) %>%
   makeGRangesFromDataFrame(keep.extra.columns = T)
+
 
 export.bed(matched_tracks_granges,
            paste0(filename, "__3ntMatched_euclidean-", round(euclidean_score, 4), ".bed.gz"))

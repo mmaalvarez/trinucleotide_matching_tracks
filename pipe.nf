@@ -1,12 +1,18 @@
 #!/usr/bin/env nextflow
 
+Channel
+    .fromPath(params.file_paths)
+    .splitCsv(header:false)
+    .set{ file_paths }
+
 process run_trinuc_matching {
 
+    //queue = 'normal_prio_long'
     time = { (params.maxTime + 0.25).hour }
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
-    path filename from params.filename
+    set file_path from file_paths
     val stoppingCriterion from params.stoppingCriterion
     val maxTime from params.maxTime
     val max_fraction_removed_trinucs from params.max_fraction_removed_trinucs
@@ -16,10 +22,11 @@ process run_trinuc_matching {
     path good_mappability_regions from params.good_mappability_regions
 
     output:
-    file 'full_tracks_trinuc32_freq.tsv' into full_tracks_trinuc32_freq
-    file 'matched_tracks.tsv' into matched_tracks
-    file 'euclidean_score.tsv' into euclidean_score
-    file 'sequences.tsv' into sequences
+    file '*_full_tracks_trinuc32_freq.tsv' into full_tracks_trinuc32_freq
+    file '*_matched_tracks.tsv' into matched_tracks
+    file '*_euclidean_score.tsv' into euclidean_score
+    file '*_sequences.tsv' into sequences
+    file '*_filename.tsv' into filename
 
     """
     #!/usr/bin/env bash
@@ -30,20 +37,23 @@ process run_trinuc_matching {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/1_run_trinuc_matching.R ${filename} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
+            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/1_run_trinuc_matching.R ${filename} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
+            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
         fi
     else
         # no conda installed
-        Rscript $PWD/bin/1_run_trinuc_matching.R ${filename} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
+        Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${utils} ${good_mappability_regions}
     fi
     """
 }
 
 process apply_trinuc_matching_to_tracks {
 
+    publishDir "$PWD/res/", mode: 'move'
+
+    //queue = 'normal_prio_long'
     time = { 2.hour }
     memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }
 
@@ -52,9 +62,11 @@ process apply_trinuc_matching_to_tracks {
     file matched_tracks from matched_tracks
     val euclidean_score from euclidean_score
     file sequences from sequences
+    file filename from filename
+    path utils from params.utils
 
     output:
-    file '*__3ntMatched_euclidean-*.bed.gz' into matched_tracks_granges
+    file '*__3ntMatched_euclidean-*.bed.gz'
 
     """
     #!/usr/bin/env bash
@@ -65,17 +77,14 @@ process apply_trinuc_matching_to_tracks {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences}
+            Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences} ${filename} ${utils}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences}
+            Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences} ${filename} ${utils}
         fi
     else
         # no conda installed
-        Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences}
+        Rscript $PWD/bin/2_apply_trinuc_matching_to_tracks.R ${full_tracks_trinuc32_freq} ${matched_tracks} ${euclidean_score} ${sequences} ${filename} ${utils}
     fi
     """
 }
-
-matched_tracks_granges
-    .println { "Finished! Trinucleotide-matched tracks saved in res/" }

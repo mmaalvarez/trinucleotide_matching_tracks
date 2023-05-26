@@ -19,18 +19,22 @@ conflict_prefer("reduce", "IRanges")
 conflict_prefer("desc", "dplyr")
 conflict_prefer("reverseComplement", "spgs")
 
+
 args = commandArgs(trailingOnly=TRUE)
+
 
 ## load tracks
 
-filename = ifelse(interactive(),
-                  yes = "/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords",
+file_path = ifelse(interactive(),
+                  yes = "../input/example.bed",
                   no = args[1])
-# try different formats
-full_tracks = tryCatch(import.bw(paste0(filename, ".bw")), # could also be .bigWig
-                       error = function(e) tryCatch(import.bedGraph(paste0(filename, ".bedGraph")),
-                                                    error = function(e) tryCatch(import.bed(paste0(filename, ".bed")), # also accepts .bed.gz
-                                                                                 error = function(e) makeGRangesFromDataFrame(read_tsv(paste0(filename, ".tsv")),
+filename = gsub(".*\\/", "", file_path) %>% gsub("\\..*", "", .)
+
+# try different extensions
+full_tracks = tryCatch(import.bw(file_path), # could also be .bigWig
+                       error = function(e) tryCatch(import.bedGraph(file_path),
+                                                    error = function(e) tryCatch(import.bed(file_path), # also accepts .bed.gz
+                                                                                 error = function(e) makeGRangesFromDataFrame(read_tsv(file_path),
                                                                                                                               keep.extra.columns = T))))
 colnames(elementMetadata(full_tracks)) = "name"
 gc()
@@ -67,12 +71,12 @@ euclidean_change_ratio = ifelse(interactive(),
 
 ## source of trinuc_matching() function
 trinuc_matching_source = ifelse(interactive(),
-                                yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R",
+                                yes = "utils.R",
                                 no = args[7])
 
 ## keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
-                                  yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
+                                  yes = "../crg75/CRG75_nochr.bed",
                                   no = args[8]) %>%
   import.bed() %>% data.frame %>%
   rename("chrom" = "seqnames") %>% 
@@ -87,7 +91,7 @@ full_tracks_good_mappability = full_tracks %>%
   # important to sort because we will use lag() and lead()
   arrange(start_crg75) %>% 
   mutate_at(vars(start_crg75), 
-            # to deal with good_mappability_regions that overlap >=2 adjacent target-bgGenome-.. (or bgGenome-target-..) coordinates
+            # to deal with good_mappability_regions that overlap >=2 adjacent target-background-.. (or background-target-..) coordinates
             funs(dist_with_next = . - lead(.),
                  dist_with_previous = . - lag(.))) %>%
                            # if 1st region of the overlap, its 'start' is either the region's start or the good_mappability's start, whichever is the largest
@@ -177,12 +181,15 @@ matched_tracks = matched_tracks[1][[1]]
 
 ## pass files to 2nd process
 rownames_to_column(full_tracks_trinuc32_freq, "bin") %>% 
-  write_tsv("full_tracks_trinuc32_freq.tsv")
+  write_tsv(paste0(filename,"_full_tracks_trinuc32_freq.tsv"))
 
-write_tsv(matched_tracks, "matched_tracks.tsv")
+write_tsv(matched_tracks, paste0(filename,"_matched_tracks.tsv"))
 
 data.frame(euclidean_score) %>%
-  write_tsv("euclidean_score.tsv")
+  write_tsv(paste0(filename,"_euclidean_score.tsv"))
 
 data.frame(sequences) %>% 
-  write_tsv("sequences.tsv")
+  write_tsv(paste0(filename,"_sequences.tsv"))
+
+data.frame(filename) %>%
+  write_tsv(paste0(filename,"_filename.tsv"))
