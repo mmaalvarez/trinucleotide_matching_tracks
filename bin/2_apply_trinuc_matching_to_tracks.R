@@ -3,6 +3,7 @@ library(data.table)
 library(dtplyr)
 library(GenomicRanges)
 library(rtracklayer)
+library(valr)
 library("BSgenome.Hsapiens.UCSC.hg19")
 library(spgs)
 library(conflicted)
@@ -84,7 +85,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   rownames_to_column("bin") %>% 
   separate(bin, into = c("seqnames", "start", "end", "name"), extra = "merge") %>% 
   bind_cols(sequences) %>% 
-  ### WARNING: updating the 'end' since the actual length of the sequence does not match the start and end difference
+  ### WARNING: updating the 'end' since the actual length of some sequences (obtained with BSGenome::getSeq()) do not match the start and end difference
   mutate(end = as.numeric(start) + nchar(`sequences`)) %>% 
   relocate(sequences) %>% relocate(name) %>% relocate(end) %>% relocate(start) %>% relocate(seqnames) %>% 
   pivot_longer(cols = !matches("seqnames") & !matches("start") & !matches("end") & !matches("name") & !matches("sequences"),

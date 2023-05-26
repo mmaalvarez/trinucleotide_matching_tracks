@@ -3,6 +3,7 @@ library(data.table)
 library(dtplyr)
 library(GenomicRanges)
 library(rtracklayer)
+library(valr)
 library("BSgenome.Hsapiens.UCSC.hg19")
 library(spgs)
 library(conflicted)
@@ -66,23 +67,60 @@ euclidean_change_ratio = ifelse(interactive(),
 
 ## source of trinuc_matching() function
 trinuc_matching_source = ifelse(interactive(),
-                                 yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R",
-                                 no = args[7])
+                                yes = "/g/strcombio/fsupek_data/users/malvarez/projects/RepDefSig/bin/utils.R",
+                                no = args[7])
 
 ## keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
-                                 yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
-                                 no = args[8]) %>%
+                                  yes = "/g/strcombio/fsupek_home/mmunteanu/reference/CRG75_nochr.bed",
+                                  no = args[8]) %>%
   import.bed() %>% data.frame %>%
-  mutate(seqnames = gsub("^", "chr", seqnames))
+  rename("chrom" = "seqnames") %>% 
+  mutate(chrom = gsub("^", "chr", chrom))
+gc()
 
+full_tracks_good_mappability = full_tracks %>% 
+  data.frame %>% rename("chrom" = "seqnames") %>% 
+  bed_intersect(good_mappability_regions, suffix = c("_full_tracks", "_crg75")) %>% 
+  ## parse the start and end of the intersects
+  group_by(chrom) %>% 
+  # important to sort because we will use lag() and lead()
+  arrange(start_crg75) %>% 
+  mutate_at(vars(start_crg75), 
+            # to deal with good_mappability_regions that overlap >=2 adjacent target-bgGenome-.. (or bgGenome-target-..) coordinates
+            funs(dist_with_next = . - lead(.),
+                 dist_with_previous = . - lag(.))) %>%
+                           # if 1st region of the overlap, its 'start' is either the region's start or the good_mappability's start, whichever is the largest
+  mutate(start = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ pmax(start_full_tracks, start_crg75),
+                           # elif middle/last region of the overlap, its 'start' is the region's start
+                           dist_with_previous == 0 & !is.na(dist_with_previous) ~ start_full_tracks,
+                           # elif no overlap between regions, BUT the good_mappability's start is BEFORE the region's start, its 'start' is the region's
+                           start_crg75 < start_full_tracks ~ start_full_tracks,
+                           # else, keep the good_mappability's start
+                           TRUE ~ start_crg75),
+                         # if 1st region of the overlap, its 'end' is the region's end
+         end = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ end_full_tracks,
+                         # elif middle/last region of the overlap, its 'end' is either the region's end or the good_mappability's end, whichever is the smallest
+                         dist_with_previous == 0 & !is.na(dist_with_previous) ~ pmin(end_full_tracks, end_crg75),
+                         # elif no overlap between regions, BUT the good_mappability's end is AFTER the region's end, its 'end' is the region's
+                         end_crg75 > end_full_tracks ~ end_full_tracks,
+                         # else, keep the good_mappability's end
+                         TRUE ~ end_crg75)) %>% 
+  ungroup %>% 
+  mutate(seqnames = factor(chrom, ordered = T, levels = paste0("chr", c(seq(1,22), "X", "Y")))) %>% 
+  arrange(seqnames, start) %>% 
+  select(seqnames, start, end, name_full_tracks) %>% 
+  rename_all(~str_replace_all(., "_crg75|_full_tracks", "")) %>%
+  makeGRangesFromDataFrame(keep.extra.columns = T)
+gc()
 
 
 ## get trinuc frequencies from each coordinate in tracks
 
 # extract the sequences
 sequences = getSeq(BSgenome.Hsapiens.UCSC.hg19, ## WARNING: Assuming that coordinates are in hg19 -- if hg38, change to 'BSgenome.Hsapiens.UCSC.hg38'
-                   names = full_tracks)
+                   names = full_tracks_good_mappability)
+gc()
 
 # get frequency of each trinucleotide per sequence, moving 1 nucleotide downstream each time
 trinuc32_freq = trinucleotideFrequency(sequences) %>%
@@ -110,8 +148,8 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   select(-id)
 gc()
 
-# bind trinuc32 freqs to original tracks
-full_tracks_trinuc32_freq = full_tracks %>%
+# bind trinuc32 freqs to original tracks (good mappability)
+full_tracks_trinuc32_freq = full_tracks_good_mappability %>%
   data.frame %>%
   unite("bin", seqnames, start, end, name) %>% 
   select(bin) %>% 
