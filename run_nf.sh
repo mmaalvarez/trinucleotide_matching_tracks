@@ -12,7 +12,7 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --file_paths $PWD/input/file_pat
 												--max_fraction_removed_trinucs 0.5 \
 												--acceleration_score 1 \
 												--euclidean_change_ratio 0.1,1.1 \
-												--memory_process1 16 \
+												--memory_process1 30 \
 												--memory_process2 40 \
 												--utils $PWD/bin/utils.R \
 												--good_mappability_regions $PWD/crg75/CRG75_nochr.bed \

@@ -197,7 +197,7 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
     
     ### note that this adjustment (subtraction) is too conservative, but by iterating it should converge to the right value
     # the acceleration_score may speed it up a bit
-    subtractThis = round(as.numeric(round(diffs[correctableColIndex] * sum(offender_row))) * acceleration_score)
+    subtractThis = round(as.numeric(diffs[correctableColIndex] * sum(offender_row)) * acceleration_score)
     
     # total counts currently at the offender_name row × correctableCol trinuc intersection
     counts_at_correctableCol_offender_name = counts[[correctableCol]][as.integer(offender_name)]

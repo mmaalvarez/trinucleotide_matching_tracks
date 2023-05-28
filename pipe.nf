@@ -8,7 +8,7 @@ Channel
 process run_trinuc_matching {
 
     //queue = 'normal_prio_long'
-    time = { (params.maxTime + 0.25).hour }
+    time = { (params.maxTime + 2).hour }
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
