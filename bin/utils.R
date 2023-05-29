@@ -29,10 +29,13 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
                            maxTime = 8, # max hours (default 8)
                            max_fraction_removed_trinucs = 0.5, # don't allow to remove more total trinucleotide counts than this fraction of the total original trinucleotide counts (default 1)
                            acceleration_score = 1, # multiplied to the n of counts to be removed at each iteration (default 1)
-                           euclidean_change_ratio_range = c(0.1, 1.1)){ # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
+                           euclidean_change_ratio_range = c(0.1, 1.1), # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
+                           fast_progress_lfc_cutoff = -0.00001, # minimum degree of Euclidean score decrease (LFC; e.g. log2(0.0615/0.062)) allowed for the mean of progress_its
+                           progress_its = 1000){ # n last iterations (that reached a mineuclidean_score) used to calculate the progress
   ## initialize constants/variables
-  euclidean_score = Inf # we want to make this decrease until 'stoppingCriterion'
+  euclidean_score = sqrt(2) # we want to make this decrease until 'stoppingCriterion'
   mineuclidean_score = euclidean_score
+  progress = c() # to keep track of how the euclidean_score decrease is progressing (and early-stop if it shows signs of stagnation)
   bin_names = data.frame("bin" = rownames(full_tracks_trinuc32_freq)) # store for re-adding it in the end, since data.table format loses it
   counts = as.data.table(full_tracks_trinuc32_freq)
   min_counts = min(counts)
@@ -157,21 +160,36 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
     ## calculate euclidean score (how diff. are the offender row freqs. from the mean freqs. across the table)
     euclidean_score = euclidean(offender_row_freqs, meanFreqs)
     
-    # store counts table if euclidean_score is new minimum
+    # calculate ratio of change in this iteration
+    euclidean_change_ratio = euclidean_score / previous_euclidean_score
+    
+    # if euclidean_score is new minimum:
     if(euclidean_score < mineuclidean_score){
+      
+      # 1- store counts table
       mineuclidean_score = euclidean_score
       counts_mineuclidean = counts
+      
+      # 2- calculate amount of change between previous and current iteration (since it reached a mineuclidean_score)...
+      LFC_euc_score = log2(euclidean_change_ratio)
+      
+      # ...and append it to the 'amount_change's of the last 'progress_its' iterations (that reached a mineuclidean_score)
+      progress = c(tail(progress, progress_its-1),
+                   LFC_euc_score)
+      mean_progress_lfc = mean(progress)
     }
     
-    # did we reduce the difference enough?
+    # did we reduce the euclidean_score enough?
     if (euclidean_score <= stoppingCriterion) {
       cat(sprintf("Successfully completed optimization: Euclidean score (%f) lower than %f - Returning current results\n", euclidean_score, stoppingCriterion) )
+      break
+    } else if (mean_progress_lfc>fast_progress_lfc_cutoff  &  length(progress)==progress_its) {
+      # if not, is the euclidean_score stagnated? (i.e. very small/slow progress)
+      cat(sprintf("Cannot continue optimization at iter %i/%i - progress (mean LFC) of last %i iterations (that decreased the min. Euclidean score) is too slow: %f > %f (fast_progress_lfc_cutoff) -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, progress_its, mean_progress_lfc, fast_progress_lfc_cutoff, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
       break
     }
     
     # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
-    euclidean_change_ratio = euclidean_score / previous_euclidean_score
-    
     if (between(euclidean_change_ratio, 
                 min(euclidean_change_ratio_range), 1)){
 
@@ -233,7 +251,7 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
       ## first check whether we have reached max. hours
       if (str_detect(time_passed, "hours$") & str_detect(time_passed, paste0("^", maxTime))){
         counts = counts_mineuclidean
-        cat( sprintf("Stopping optimization - maximum number of hours reached - Returning min Euclidean score results (%f)\n", mineuclidean_score) );
+        cat( sprintf("Stopping optimization - maximum number of hours reached - Returning min Euclidean score results (%f)\n", mineuclidean_score) )
         break
       }  
       
@@ -249,7 +267,8 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
         stop(sprintf("Cannot continue optimization at iter %i/%i - 'too_few_trinuc_bins' comprises all possible bins, so no offender bin can be defined -- Exiting and returning min Euclidean score results (%f)\nAnalysis terminated after %s\n", iter, maxIter, mineuclidean_score, paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))))
       }
       
-      cat( sprintf("Iteration %i/%i:\n\tSubtracted %i '%s's at bin #'%s'\n\t%.02f%% of the original trinucleotides have been removed\n\tEuclidean score: %f\n\tAcceleration score: %f\n\t%s have passed\n\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, acceleration_score, time_passed))
+      # print log message
+      cat( sprintf("Iteration %i/%i:\n\tSubtracted %i '%s's at bin #'%s'\n\t%.02f%% of the original trinucleotides have been removed\n\tEuclidean score: %f\n\tAcceleration score: %f\n\tMean progress LFC: %f for the last %i iterations that updated the min. Euclidean score\n\t%s have passed\n\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, acceleration_score, mean_progress_lfc, progress_its, time_passed))
     }
     
   } ## keep iterating...

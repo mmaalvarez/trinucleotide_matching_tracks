@@ -26,7 +26,7 @@ args = commandArgs(trailingOnly=TRUE)
 ## load tracks
 
 file_path = ifelse(interactive(),
-                  yes = "../input/example.bed",
+                  yes = "../input/example.bed",#"/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords.bed",
                   no = args[1])
 filename = gsub(".*\\/", "", file_path) %>% gsub("\\..*", "", .)
 
@@ -69,53 +69,67 @@ euclidean_change_ratio = ifelse(interactive(),
   magrittr::extract2(1) %>% 
   as.numeric()
 
+fast_progress_lfc_cutoff = ifelse(interactive(),
+                                  yes = "-0.00001",
+                                  no = args[7]) %>%
+  as.numeric()
+
+progress_its = ifelse(interactive(),
+                      yes = "1000",
+                      no = args[8]) %>% 
+  as.numeric()
+
 ## source of trinuc_matching() function
 trinuc_matching_source = ifelse(interactive(),
                                 yes = "utils.R",
-                                no = args[7])
+                                no = args[9])
 
-## keep SNVs in good mappability regions
+## OPTIONAL: keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
-                                  yes = "../crg75/CRG75_nochr.bed",
-                                  no = args[8]) %>%
+                                  yes = "",
+                                  no = args[10])
+if(!good_mappability_regions %in% c("", "None", "none", "NONE", "NULL", "Na", "NA")){
+  
+  # import good_mappability_regions
   import.bed() %>% data.frame %>%
   rename("chrom" = "seqnames") %>% 
   mutate(chrom = gsub("^", "chr", chrom))
-gc()
 
-full_tracks_good_mappability = full_tracks %>% 
-  data.frame %>% rename("chrom" = "seqnames") %>% 
-  bed_intersect(good_mappability_regions, suffix = c("_full_tracks", "_crg75")) %>% 
-  ## parse the start and end of the intersects
-  group_by(chrom) %>% 
-  # important to sort because we will use lag() and lead()
-  arrange(start_crg75) %>% 
-  mutate_at(vars(start_crg75), 
-            # to deal with good_mappability_regions that overlap >=2 adjacent target-background-.. (or background-target-..) coordinates
-            funs(dist_with_next = . - lead(.),
-                 dist_with_previous = . - lag(.))) %>%
-                           # if 1st region of the overlap, its 'start' is either the region's start or the good_mappability's start, whichever is the largest
-  mutate(start = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ pmax(start_full_tracks, start_crg75),
-                           # elif middle/last region of the overlap, its 'start' is the region's start
-                           dist_with_previous == 0 & !is.na(dist_with_previous) ~ start_full_tracks,
-                           # elif no overlap between regions, BUT the good_mappability's start is BEFORE the region's start, its 'start' is the region's
-                           start_crg75 < start_full_tracks ~ start_full_tracks,
-                           # else, keep the good_mappability's start
-                           TRUE ~ start_crg75),
-                         # if 1st region of the overlap, its 'end' is the region's end
-         end = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ end_full_tracks,
-                         # elif middle/last region of the overlap, its 'end' is either the region's end or the good_mappability's end, whichever is the smallest
-                         dist_with_previous == 0 & !is.na(dist_with_previous) ~ pmin(end_full_tracks, end_crg75),
-                         # elif no overlap between regions, BUT the good_mappability's end is AFTER the region's end, its 'end' is the region's
-                         end_crg75 > end_full_tracks ~ end_full_tracks,
-                         # else, keep the good_mappability's end
-                         TRUE ~ end_crg75)) %>% 
-  ungroup %>% 
-  mutate(seqnames = factor(chrom, ordered = T, levels = paste0("chr", c(seq(1,22), "X", "Y")))) %>% 
-  arrange(seqnames, start) %>% 
-  select(seqnames, start, end, name_full_tracks) %>% 
-  rename_all(~str_replace_all(., "_crg75|_full_tracks", "")) %>%
-  makeGRangesFromDataFrame(keep.extra.columns = T)
+  # filter out bad mappability regions
+  full_tracks = full_tracks %>% 
+    data.frame %>% rename("chrom" = "seqnames") %>% 
+    bed_intersect(good_mappability_regions, suffix = c("_full_tracks", "_crg75")) %>% 
+    ## parse the start and end of the intersects
+    group_by(chrom) %>% 
+    # important to sort because we will use lag() and lead()
+    arrange(start_crg75) %>% 
+    mutate_at(vars(start_crg75), 
+              # to deal with good_mappability_regions that overlap >=2 adjacent target-background-.. (or background-target-..) coordinates
+              funs(dist_with_next = . - lead(.),
+                   dist_with_previous = . - lag(.))) %>%
+                             # if 1st region of the overlap, its 'start' is either the region's start or the good_mappability's start, whichever is the largest
+    mutate(start = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ pmax(start_full_tracks, start_crg75),
+                             # elif middle/last region of the overlap, its 'start' is the region's start
+                             dist_with_previous == 0 & !is.na(dist_with_previous) ~ start_full_tracks,
+                             # elif no overlap between regions, BUT the good_mappability's start is BEFORE the region's start, its 'start' is the region's
+                             start_crg75 < start_full_tracks ~ start_full_tracks,
+                             # else, keep the good_mappability's start
+                             TRUE ~ start_crg75),
+                           # if 1st region of the overlap, its 'end' is the region's end
+           end = case_when(dist_with_next == 0 & (dist_with_previous != 0 | is.na(dist_with_previous)) ~ end_full_tracks,
+                           # elif middle/last region of the overlap, its 'end' is either the region's end or the good_mappability's end, whichever is the smallest
+                           dist_with_previous == 0 & !is.na(dist_with_previous) ~ pmin(end_full_tracks, end_crg75),
+                           # elif no overlap between regions, BUT the good_mappability's end is AFTER the region's end, its 'end' is the region's
+                           end_crg75 > end_full_tracks ~ end_full_tracks,
+                           # else, keep the good_mappability's end
+                           TRUE ~ end_crg75)) %>% 
+    ungroup %>% 
+    mutate(seqnames = factor(chrom, ordered = T, levels = paste0("chr", c(seq(1,22), "X", "Y")))) %>% 
+    arrange(seqnames, start) %>% 
+    select(seqnames, start, end, name_full_tracks) %>% 
+    rename_all(~str_replace_all(., "_crg75|_full_tracks", "")) %>%
+    makeGRangesFromDataFrame(keep.extra.columns = T)
+}
 gc()
 
 
@@ -123,7 +137,7 @@ gc()
 
 # extract the sequences
 sequences = getSeq(BSgenome.Hsapiens.UCSC.hg19, ## WARNING: Assuming that coordinates are in hg19 -- if hg38, change to 'BSgenome.Hsapiens.UCSC.hg38'
-                   names = full_tracks_good_mappability)
+                   names = full_tracks)
 gc()
 
 # get frequency of each trinucleotide per sequence, moving 1 nucleotide downstream each time
@@ -152,8 +166,8 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   select(-id)
 gc()
 
-# bind trinuc32 freqs to original tracks (good mappability)
-full_tracks_trinuc32_freq = full_tracks_good_mappability %>%
+# bind trinuc32 freqs to original tracks
+full_tracks_trinuc32_freq = full_tracks %>%
   data.frame %>%
   unite("bin", seqnames, start, end, name) %>% 
   select(bin) %>% 
@@ -171,7 +185,9 @@ matched_tracks = trinuc_matching(full_tracks_trinuc32_freq,
                                  maxTime = maxTime, # max hours (default 8)
                                  max_fraction_removed_trinucs = max_fraction_removed_trinucs, # don't allow to remove more total trinucleotide counts than this fraction of the total original trinucleotide counts (default 0.5)
                                  acceleration_score = acceleration_score, # multiplied to the n of counts to be removed at each iteration (default 1)
-                                 euclidean_change_ratio = euclidean_change_ratio) # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)                                 
+                                 euclidean_change_ratio = euclidean_change_ratio, # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
+                                 fast_progress_lfc_cutoff = fast_progress_lfc_cutoff, # minimum degree of Euclidean score decrease (LFC; e.g. log2(0.0615/0.062)) allowed for the mean of progress_its
+                                 progress_its = progress_its) # n last iterations (that reached a mineuclidean_score) used to calculate the progress
 gc()
 
 euclidean_score = matched_tracks[2][[1]]
