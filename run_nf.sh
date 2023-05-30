@@ -14,8 +14,8 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --file_paths=$PWD/input/file_pat
 												--euclidean_change_ratio=0.1,1.1 \
 												--fast_progress_lfc_cutoff=-0.00001 \
 												--progress_its=1000 \
-												--memory_process1=30 \
-												--memory_process2=40 \
+												--memory_process1=15 \
+												--memory_process2=45 \
 												--utils=$PWD/bin/utils.R \
 												--good_mappability_regions=none \
 												-resume #\ -with-tower

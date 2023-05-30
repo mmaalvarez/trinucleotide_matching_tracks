@@ -23,35 +23,40 @@ args = commandArgs(trailingOnly=TRUE)
 
 ## load files from 2nd process
 
+interactive_work_path = "../work/3c/923348ba7ab03ef48c3e7a6255c9b7/"
+
 full_tracks_trinuc32_freq = ifelse(interactive(),
-                                   yes = "full_tracks_trinuc32_freq.tsv",
+                                   yes = Sys.glob(paste0(interactive_work_path, "*_full_tracks_trinuc32_freq.tsv")),
                                    no = args[1]) %>% 
   read_tsv()
+bin_names = select(full_tracks_trinuc32_freq, bin)
 
 matched_tracks = ifelse(interactive(),
-                        yes = "matched_tracks.tsv",
+                        yes = Sys.glob(paste0(interactive_work_path, "*_matched_tracks.tsv")),
                         no = args[2]) %>% 
-  read_tsv()
+  read_tsv() %>%
+  column_to_rownames("bin")
 
 euclidean_score = ifelse(interactive(),
-                         yes = "euclidean_score.tsv",
+                         yes = Sys.glob(paste0(interactive_work_path, "*_euclidean_score.tsv")),
                          no = args[3]) %>% 
   read_tsv() %>% pull(euclidean_score) %>% as.numeric()
 
 sequences = ifelse(interactive(),
-                   yes = "sequences.tsv",
+                   yes = Sys.glob(paste0(interactive_work_path, "*_sequences.tsv")),
                    no = args[4]) %>% 
   read_tsv()
 
 filename = ifelse(interactive(),
-                   yes = "filename.tsv",
+                   yes = Sys.glob(paste0(interactive_work_path, "*_filename.tsv")),
                    no = args[5]) %>% 
   read_tsv() %>% pull(filename)
 
 # source of rm_n_trinucs_at_random_indices() function
 trinuc_matching_source = ifelse(interactive(),
                                 yes = "utils.R",
-                                no = args[6])
+                                no = args[6]) %>% 
+  source()
 
 
 ## within each coordinate, randomly remove as many trinucleotides from each type as have been removed with trinuc_matching, and keep track of their positions
@@ -61,7 +66,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   # subtract orig from remaining counts
   map2_dfc(matched_tracks, ~ .x - .y) %>% 
   # bin names back, and sequences
-  rownames_to_column("bin") %>% 
+  bind_cols(bin_names) %>% relocate(bin) %>%  
   separate(bin, into = c("seqnames", "start", "end", "name"), extra = "merge") %>% 
   bind_cols(sequences) %>% 
   ### WARNING: updating the 'end' since the actual length of some sequences (obtained with BSGenome::getSeq()) do not match the start and end difference
@@ -103,7 +108,6 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
          "end" = "new_end") %>%
   arrange(seqnames, start, end) %>%
   makeGRangesFromDataFrame(keep.extra.columns = T)
-
 
 export.bed(matched_tracks_granges,
            paste0(filename, "__3ntMatched_euclidean-", round(euclidean_score, 4), ".bed.gz"))

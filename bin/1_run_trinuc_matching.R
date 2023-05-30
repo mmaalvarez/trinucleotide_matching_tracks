@@ -26,7 +26,7 @@ args = commandArgs(trailingOnly=TRUE)
 ## load tracks
 
 file_path = ifelse(interactive(),
-                  yes = "../input/example.bed",#"/g/strcombio/fsupek_cancer3/malvarez/WGS_tumors/somatic_variation/TCGA_PCAWG_Hartwig_CPTAC_POG_MMRFCOMMPASS/SHM/CTCF_cohesin/1_CTCF_cohesin_peaks_coords/CTCF_cohesin_peaks_coords.bed",
+                  yes = "../input/example.bed",
                   no = args[1])
 filename = gsub(".*\\/", "", file_path) %>% gsub("\\..*", "", .)
 
@@ -82,7 +82,8 @@ progress_its = ifelse(interactive(),
 ## source of trinuc_matching() function
 trinuc_matching_source = ifelse(interactive(),
                                 yes = "utils.R",
-                                no = args[9])
+                                no = args[9]) %>% 
+  source()
 
 ## OPTIONAL: keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
@@ -177,8 +178,6 @@ gc()
 
 
 ## run matching
-source(trinuc_matching_source)
-
 matched_tracks = trinuc_matching(full_tracks_trinuc32_freq, 
                                  stoppingCriterion = stoppingCriterion, # desired Euclidean score (max. overall distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
                                  maxIter = 20000*length(full_tracks_trinuc32_freq), # to prevent endless loops
