@@ -6,6 +6,7 @@ library(rtracklayer)
 library(valr)
 library("BSgenome.Hsapiens.UCSC.hg19")
 library(spgs)
+library(rlang)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
@@ -18,27 +19,18 @@ conflict_prefer("extract", "magrittr")
 conflict_prefer("reduce", "IRanges")
 conflict_prefer("desc", "dplyr")
 conflict_prefer("reverseComplement", "spgs")
+conflict_prefer("strsplit", "base")
 
 
 args = commandArgs(trailingOnly=TRUE)
 
 
-## load tracks
+## tracks file path and name
 
 file_path = ifelse(interactive(),
-                  yes = "../input/example.bed",
+                  yes = "example.bed",
                   no = args[1])
 filename = gsub(".*\\/", "", file_path) %>% gsub("\\..*", "", .)
-
-# try different extensions
-full_tracks = tryCatch(import.bw(file_path), # could also be .bigWig
-                       error = function(e) tryCatch(import.bedGraph(file_path),
-                                                    error = function(e) tryCatch(import.bed(file_path), # also accepts .bed.gz
-                                                                                 error = function(e) makeGRangesFromDataFrame(read_tsv(file_path),
-                                                                                                                              keep.extra.columns = T))))
-colnames(elementMetadata(full_tracks)) = "name"
-gc()
-
 
 ## parameter values for trinuc_matching()
 
@@ -53,7 +45,7 @@ maxTime = ifelse(interactive(),
   as.numeric()
 
 max_fraction_removed_trinucs = ifelse(interactive(),
-                                      yes = "0.5",
+                                      yes = "0.25",
                                       no = args[4]) %>% 
   as.numeric()
 
@@ -89,6 +81,59 @@ trinuc_matching_source = ifelse(interactive(),
 good_mappability_regions = ifelse(interactive(),
                                   yes = "",
                                   no = args[10])
+
+
+##########################
+
+### load tracks file
+
+full_tracks = load_tracks(file_path)
+gc()
+
+
+## binarize continuous (i.e. numeric) scores
+
+scores = elementMetadata(full_tracks)[[1]]
+
+if(is.numeric(scores)){
+  
+  # calculate median score for the feature, for binarization
+  median_score = median(scores)
+  
+  ## binarize weighted average feature value by being lower or larger than the across-genome median
+  full_tracks = full_tracks %>%
+    data.frame %>% 
+    lazy_dt %>% 
+    #### WARNING first do the average score at duplicated (start end) ranges, this is due to the (in some features) hg38-->hg19 lift dividing some ranges into 2 alternative ranges with the same score
+    group_by(seqnames, start, end) %>% 
+    summarise(name = mean(name)) %>% 
+    ungroup %>% 
+    as_tibble %>% 
+    rowwise %>% 
+    lazy_dt %>% 
+    mutate(name = ifelse(name <= median_score,
+                         "low",
+                         "high")) %>% 
+    as_tibble %>% 
+    makeGRangesFromDataFrame(keep.extra.columns = T)
+  gc()
+  
+  ## collapse contiguous ranges if they have same metadata levels
+  full_tracks = unlist(reduce(split(full_tracks, ~name)))
+  mcols(full_tracks) = names(full_tracks)
+  full_tracks = full_tracks %>% 
+    as_tibble %>% 
+    mutate(seqnames = factor(seqnames, levels = paste0("chr", c(seq(1,22),"X","Y")))) %>% 
+    arrange(seqnames, start) %>% 
+    rename("name" = "X") %>% 
+    makeGRangesFromDataFrame(keep.extra.columns = T)
+  gc()
+  
+}else{
+  cat (sprintf("Tracks file metadata is not continuous (%s), keeping it unchanged\n", paste(unique(mcols(full_tracks))[["name"]], collapse = ", ")))
+}
+
+## OPTIONAL: keep SNVs in good mappability regions
 if(!good_mappability_regions %in% c("", "None", "none", "NONE", "NULL", "Na", "NA")){
   
   # import good_mappability_regions

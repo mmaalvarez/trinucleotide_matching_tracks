@@ -23,7 +23,7 @@ args = commandArgs(trailingOnly=TRUE)
 
 ## load files from 2nd process
 
-interactive_work_path = "../work/3c/923348ba7ab03ef48c3e7a6255c9b7/"
+interactive_work_path = "./"
 
 full_tracks_trinuc32_freq = ifelse(interactive(),
                                    yes = Sys.glob(paste0(interactive_work_path, "*_full_tracks_trinuc32_freq.tsv")),
@@ -57,7 +57,7 @@ trinuc_matching_source = ifelse(interactive(),
                                 yes = "utils.R",
                                 no = args[6]) %>% 
   source()
-
+gc()
 
 ## within each coordinate, randomly remove as many trinucleotides from each type as have been removed with trinuc_matching, and keep track of their positions
 
@@ -79,10 +79,10 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   mutate(trinuc32 = paste0(trinuc32, "|", reverseComplement(trinuc32, case="upper"))) %>% 
   ## do the removing thing
   rowwise() %>% 
-  mutate(new_end = list(rm_n_trinucs_at_random_indices(removed_trinucs, trinuc32, sequences))) %>% 
+  mutate(new_end = list(rm_n_trinucs_at_random_indices(`removed_trinucs`, `trinuc32`, `sequences`))) %>% 
   group_by(seqnames, start, end, name) %>% 
   # new_end is now unique positions 1bp before each trinucleotide removed
-  summarise(new_end = list((unique(unlist(new_end)) + as.numeric(start)) - 1)) %>% 
+  summarise(new_end = list(unique(unlist(new_end)) + as.numeric(start) - 1)) %>% 
   ungroup %>% 
   unnest(new_end) %>% 
   distinct() %>% 
@@ -108,6 +108,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
          "end" = "new_end") %>%
   arrange(seqnames, start, end) %>%
   makeGRangesFromDataFrame(keep.extra.columns = T)
+gc()
 
 export.bed(matched_tracks_granges,
            paste0(filename, "__3ntMatched_euclidean-", round(euclidean_score, 4), ".bed.gz"))

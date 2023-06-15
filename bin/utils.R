@@ -316,3 +316,31 @@ rm_n_trinucs_at_random_indices = function(removed_trinucs, trinuc32, sequences){
     return(NA)
   }
 }
+
+
+
+#######################################################################################
+## load tracks file, keep metadata without NAs
+load_tracks <- function(path_file) {
+  
+  # load it
+  tracks_file = tryCatch(import.bw(path_file),
+                         error = function(e) tryCatch(import.bedGraph(path_file),
+                                                      error = function(e) tryCatch(import.bed(path_file),
+                                                                                   error = function(e) tryCatch(makeGRangesFromDataFrame(read_tsv(path_file), keep.extra.columns = T),
+                                                                                                                error = function(e) import.wig(path_file)))))
+  # keep only metadata without NAs
+  for(metadata_col in names(elementMetadata(tracks_file))){
+    if(unique(is.na(unique(elementMetadata(tracks_file)[[metadata_col]])))){
+      mcols(tracks_file)[[metadata_col]] <- NULL
+    }
+  }
+  # call the metadata column "name"
+  names(mcols(tracks_file)) = "name"
+  
+  # sort tracks file by chromosome
+  tracks_file = sortSeqlevels(tracks_file)
+  gc()
+  
+  return(tracks_file)
+}

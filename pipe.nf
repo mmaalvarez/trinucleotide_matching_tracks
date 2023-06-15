@@ -7,8 +7,8 @@ Channel
 
 process run_trinuc_matching {
 
-    //queue = 'normal_prio_long'
-    time = { (params.maxTime + 2).hour }
+    queue = 'normal_prio_long'
+    time = { (params.maxTime + 3).hour }
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
@@ -53,10 +53,10 @@ process run_trinuc_matching {
 
 process apply_trinuc_matching_to_tracks {
 
-    publishDir "$PWD/res/", mode: 'move'
+    publishDir "$PWD/res/", mode: 'copy'
 
-    //queue = 'normal_prio_long'
-    time = { 24.hour }
+    queue = 'normal_prio_long'
+    time = { 48.hour }
     memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }
 
     input:
