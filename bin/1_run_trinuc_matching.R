@@ -44,43 +44,47 @@ maxTime = ifelse(interactive(),
                  no = args[3]) %>% 
   as.numeric()
 
+unitsTime = ifelse(interactive(),
+                   yes = "hours",
+                   no = args[4])
+
 max_fraction_removed_trinucs = ifelse(interactive(),
                                       yes = "0.25",
-                                      no = args[4]) %>% 
+                                      no = args[5]) %>% 
   as.numeric()
 
 acceleration_score = ifelse(interactive(),
                             yes = "1",
-                            no = args[5]) %>% 
+                            no = args[6]) %>% 
   as.numeric()
 
 euclidean_change_ratio = ifelse(interactive(),
                                 yes = "0.1,1.1",
-                                no = args[6]) %>% 
+                                no = args[7]) %>% 
   strsplit(., split=",", fixed = T) %>% 
   magrittr::extract2(1) %>% 
   as.numeric()
 
 fast_progress_lfc_cutoff = ifelse(interactive(),
                                   yes = "-0.00001",
-                                  no = args[7]) %>%
+                                  no = args[8]) %>%
   as.numeric()
 
 progress_its = ifelse(interactive(),
                       yes = "1000",
-                      no = args[8]) %>% 
+                      no = args[9]) %>% 
   as.numeric()
 
 ## source of trinuc_matching() function
 trinuc_matching_source = ifelse(interactive(),
                                 yes = "utils.R",
-                                no = args[9]) %>% 
+                                no = args[10]) %>% 
   source()
 
 ## OPTIONAL: keep SNVs in good mappability regions
 good_mappability_regions = ifelse(interactive(),
                                   yes = "",
-                                  no = args[10])
+                                  no = args[11])
 
 
 ##########################
@@ -96,10 +100,20 @@ gc()
 scores = elementMetadata(full_tracks)[[1]]
 
 if(is.numeric(scores)){
-  
+
   # calculate median score for the feature, for binarization
   median_score = median(scores)
-  
+
+  # check if "score" only contains numbers, even though it is labelled as a "character" column and these numbers are formatted as strings
+  } else if(all(grepl("^[-]?[0-9]+(\\.[0-9]+)?$",
+                      scores))){
+    median_score = median(as.numeric(scores))
+
+  }else{
+  cat (sprintf("Tracks file metadata is not continuous (%s), keeping it unchanged\n", paste(unique(mcols(full_tracks))[["name"]], collapse = ", ")))
+}
+
+if(exists("median_score")){
   ## binarize weighted average feature value by being lower or larger than the across-genome median
   full_tracks = full_tracks %>%
     data.frame %>% 
@@ -128,10 +142,8 @@ if(is.numeric(scores)){
     rename("name" = "X") %>% 
     makeGRangesFromDataFrame(keep.extra.columns = T)
   gc()
-  
-}else{
-  cat (sprintf("Tracks file metadata is not continuous (%s), keeping it unchanged\n", paste(unique(mcols(full_tracks))[["name"]], collapse = ", ")))
 }
+
 
 ## OPTIONAL: keep SNVs in good mappability regions
 if(!good_mappability_regions %in% c("", "None", "none", "NONE", "NULL", "Na", "NA")){
@@ -226,8 +238,8 @@ gc()
 matched_tracks = trinuc_matching(full_tracks_trinuc32_freq, 
                                  stoppingCriterion = stoppingCriterion, # desired Euclidean score (max. overall distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
                                  maxIter = 20000*length(full_tracks_trinuc32_freq), # to prevent endless loops
-                                 maxTime = maxTime, # max hours (default 8)
-                                 max_fraction_removed_trinucs = max_fraction_removed_trinucs, # don't allow to remove more total trinucleotide counts than this fraction of the total original trinucleotide counts (default 0.5)
+                                 maxTime = maxTime, # max time (default 8)
+                                 unitsTime = unitsTime, # time units, default "hours", if >24h should specify "days"                                 max_fraction_removed_trinucs = max_fraction_removed_trinucs, # don't allow to remove more total trinucleotide counts than this fraction of the total original trinucleotide counts (default 0.5)
                                  acceleration_score = acceleration_score, # multiplied to the n of counts to be removed at each iteration (default 1)
                                  euclidean_change_ratio = euclidean_change_ratio, # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
                                  fast_progress_lfc_cutoff = fast_progress_lfc_cutoff, # minimum degree of Euclidean score decrease (LFC; e.g. log2(0.0615/0.062)) allowed for the mean of progress_its

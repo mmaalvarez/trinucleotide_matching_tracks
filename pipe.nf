@@ -8,13 +8,14 @@ Channel
 process run_trinuc_matching {
 
     queue = 'normal_prio_long'
-    time = { (params.maxTime + 3).hour }
+    time = { params.time_process1.hour }
     memory = { (params.memory_process1 + 5*(task.attempt-1)).GB }
 
     input:
     set file_path from file_paths
     val stoppingCriterion from params.stoppingCriterion
     val maxTime from params.maxTime
+    val unitsTime from params.unitsTime
     val max_fraction_removed_trinucs from params.max_fraction_removed_trinucs
     val acceleration_score from params.acceleration_score
     val euclidean_change_ratio from params.euclidean_change_ratio
@@ -39,14 +40,14 @@ process run_trinuc_matching {
         then
             # there is a conda environment named "R"
             conda activate R
-            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
+            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${unitsTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
         else
             # no conda environment named "R"
-            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
+            Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${unitsTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
         fi
     else
         # no conda installed
-        Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
+        Rscript $PWD/bin/1_run_trinuc_matching.R ${file_path} ${stoppingCriterion} ${maxTime} ${unitsTime} ${max_fraction_removed_trinucs} ${acceleration_score} ${euclidean_change_ratio} ${fast_progress_lfc_cutoff} ${progress_its} ${utils} ${good_mappability_regions}
     fi
     """
 }
@@ -56,7 +57,7 @@ process apply_trinuc_matching_to_tracks {
     publishDir "$PWD/res/", mode: 'copy'
 
     queue = 'normal_prio_long'
-    time = { 48.hour }
+    time = { params.time_process2.hour }
     memory = { (params.memory_process2 + 5*(task.attempt-1)).GB }
 
     input:

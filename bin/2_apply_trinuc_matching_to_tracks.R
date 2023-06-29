@@ -64,17 +64,29 @@ gc()
 matched_tracks_granges = full_tracks_trinuc32_freq %>%
   column_to_rownames("bin") %>% 
   # subtract orig from remaining counts
-  map2_dfc(matched_tracks, ~ .x - .y) %>% 
+  map2_dfc(matched_tracks, ~ .x - .y)
+## free up memory
+rm(full_tracks_trinuc32_freq) ; rm(matched_tracks) ; gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>% 
   # bin names back, and sequences
   bind_cols(bin_names) %>% relocate(bin) %>%  
   separate(bin, into = c("seqnames", "start", "end", "name"), extra = "merge") %>% 
-  bind_cols(sequences) %>% 
+  bind_cols(sequences)
+## free up memory
+rm(bin_names) ; rm(sequences) ; gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>% 
   ### WARNING: updating the 'end' since the actual length of some sequences (obtained with BSGenome::getSeq()) do not match the start and end difference
   mutate(end = as.numeric(start) + nchar(`sequences`)) %>% 
   relocate(sequences) %>% relocate(name) %>% relocate(end) %>% relocate(start) %>% relocate(seqnames) %>% 
   pivot_longer(cols = !matches("seqnames") & !matches("start") & !matches("end") & !matches("name") & !matches("sequences"),
                names_to = 'trinuc32',
-               values_to = 'removed_trinucs') %>% 
+               values_to = 'removed_trinucs')
+## free up memory
+gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>%
   # include reverse complement for each trinuc32, so it's actually trinuc64
   mutate(trinuc32 = paste0(trinuc32, "|", reverseComplement(trinuc32, case="upper"))) %>% 
   ## do the removing thing
@@ -83,9 +95,17 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   group_by(seqnames, start, end, name) %>% 
   # new_end is now unique positions 1bp before each trinucleotide removed
   summarise(new_end = list(unique(unlist(new_end)) + as.numeric(start) - 1)) %>% 
-  ungroup %>% 
+  ungroup
+## free up memory
+gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>%
   unnest(new_end) %>% 
-  distinct() %>% 
+  distinct()
+## free up memory
+gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>%
   # in rows just before/at a region in which matching was not performed (typically "target" regions, as they are shorter), or at ending of chr, the new_end == end
   mutate(new_end = ifelse(is.na(new_end),
                           as.numeric(end),
@@ -103,6 +123,10 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   ungroup %>% 
   # remove negative or 0 widths (due to overlapping of removed trinucleotides)
   filter(width >= 1) %>% 
+  ## free up memory
+  gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>%
   select(seqnames, new_start, new_end, width, strand, name) %>%
   rename("start" = "new_start",
          "end" = "new_end") %>%

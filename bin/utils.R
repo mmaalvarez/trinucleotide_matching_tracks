@@ -26,7 +26,8 @@ euclidean = function(a, b){
 trinuc_matching = function(full_tracks_trinuc32_freq, 
                            stoppingCriterion = 0.01, # desired Euclidean score (max. overall distance between any bin's trinuc frequencies and all-bin-average trinuc frequencies)
                            maxIter = 20000*length(full_tracks_trinuc32_freq), # to prevent endless loops
-                           maxTime = 8, # max hours (default 8)
+                           maxTime = 8, # max time (default 8)
+                           unitsTime = "hours", # time units, default "hours", if >24h should specify "days"
                            max_fraction_removed_trinucs = 0.5, # don't allow to remove more total trinucleotide counts than this fraction of the total original trinucleotide counts (default 1)
                            acceleration_score = 1, # multiplied to the n of counts to be removed at each iteration (default 1)
                            euclidean_change_ratio_range = c(0.1, 1.1), # if the ratio of the current euclidean score compared to the previous iteration's is between the lower term of the range and 1 (i.e. too slow), increase acceleration_score proportionally; decrease accel.._score accordingly (min. 1) if the ratio is larger than the range (i.e. euc. score changes too erratically)
@@ -245,13 +246,12 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
     
     ## output log every 100th iter
     if(iter %% 100 == 0){
-      
-      time_passed = paste(round(Sys.time() - start_time, 2), units(Sys.time() - start_time))
-      
-      ## first check whether we have reached max. hours
-      if (str_detect(time_passed, "hours$") & str_detect(time_passed, paste0("^", maxTime))){
+
+      ## first check whether we have reached max. time
+      time_passed = str_split(paste(round(Sys.time() - start_time), units(Sys.time() - start_time)), " ")[[1]]
+      if (as.numeric(time_passed[1]) >= maxTime & time_passed[2] == unitsTime){
         counts = counts_mineuclidean
-        cat( sprintf("Stopping optimization - maximum number of hours reached - Returning min Euclidean score results (%f)\n", mineuclidean_score) )
+        cat( sprintf("Stopping optimization - %s %s have passed - Returning min Euclidean score results (%f)\n", time_passed[1], time_passed[2], mineuclidean_score) )
         break
       }  
       
@@ -268,7 +268,7 @@ trinuc_matching = function(full_tracks_trinuc32_freq,
       }
       
       # print log message
-      cat( sprintf("Iteration %i/%i:\n\tSubtracted %i '%s's at bin #'%s'\n\t%.02f%% of the original trinucleotides have been removed\n\tEuclidean score: %f\n\tAcceleration score: %f\n\tMean progress LFC: %f for the last %i iterations that updated the min. Euclidean score\n\t%s have passed\n\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, acceleration_score, mean_progress_lfc, progress_its, time_passed))
+      cat( sprintf("Iteration %i/%i:\n\tSubtracted %i '%s's at bin #'%s'\n\t%.02f%% of the original trinucleotides have been removed\n\tEuclidean score: %f\n\tAcceleration score: %f\n\tMean progress LFC: %f for the last %i iterations that updated the min. Euclidean score\n\t%s %s have passed\n\n", iter, maxIter, abs(as.numeric(subtractThis)), correctableCol, offender_name, removed_trinucs/total_orig_trinucs*100, euclidean_score, acceleration_score, mean_progress_lfc, progress_its, time_passed[1], time_passed[2]))
     }
     
   } ## keep iterating...
