@@ -35,7 +35,7 @@ end_int = ifelse(interactive(),
 
 ## load files from 2nd process
 
-interactive_work_path = "./"
+interactive_work_path = "../../work/54/2c44d8fe769335dc4d4a73ad46a0e3/"
 
 full_tracks_trinuc32_freq = ifelse(interactive(),
                                    yes = Sys.glob(paste0(interactive_work_path, "*_full_tracks_trinuc32_freq.tsv")),
@@ -43,7 +43,7 @@ full_tracks_trinuc32_freq = ifelse(interactive(),
   read_tsv() %>%
   ### NEW fraction of the input files to parse in this iteration
   slice(start_int:end_int)
-
+  
 bin_names = select(full_tracks_trinuc32_freq, bin)
 
 matched_tracks = ifelse(interactive(),
@@ -54,10 +54,7 @@ matched_tracks = ifelse(interactive(),
   slice(start_int:end_int) %>% 
   column_to_rownames("bin")
 
-euclidean_score = ifelse(interactive(),
-                         yes = Sys.glob(paste0(interactive_work_path, "*_euclidean_score.tsv")),
-                         no = args[5]) %>% 
-  read_tsv() %>% pull(euclidean_score) %>% as.numeric()
+euclidean_score = as.numeric(args[5])
 
 sequences = ifelse(interactive(),
                    yes = Sys.glob(paste0(interactive_work_path, "*_sequences.tsv")),
@@ -66,18 +63,15 @@ sequences = ifelse(interactive(),
   ### NEW fraction of the input files to parse in this iteration
   slice(start_int:end_int)
 
-filename = ifelse(interactive(),
-                   yes = Sys.glob(paste0(interactive_work_path, "*_filename.tsv")),
-                   no = args[7]) %>% 
-  read_tsv() %>% pull(filename)
+filename = args[7]
 
 # source of rm_n_trinucs_at_random_indices() function
 trinuc_matching_source = ifelse(interactive(),
-                                yes = "utils.R",
+                                yes = "../../bin/utils.R",
                                 no = args[8]) %>% 
   source()
-
 gc()
+
 
 
 ## within each coordinate, randomly remove as many trinucleotides from each type as have been removed with trinuc_matching, and keep track of their positions

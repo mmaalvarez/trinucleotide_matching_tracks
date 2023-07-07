@@ -308,6 +308,8 @@ rm_n_trinucs_at_random_indices = function(removed_trinucs, trinuc32, sequences){
                                    n_trinucs_to_remove,
                                    replace = F))
     niters = niters + 1
+
+    gc()
   }
   
   if(exists("sample_n_matches") && !is.null(sample_n_matches) && niters<1e6){
