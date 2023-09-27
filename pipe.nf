@@ -109,6 +109,7 @@ process apply_trinuc_matching_to_tracks {
 }
 
 
+/*
 // CORRECT THIS so that ${filename} and ${euclidean_score} are the actual parameter values, not literary '${filename}' and '${euclidean_score}'
 filename = params.filename
 euclidean_score = params.euclidean_score
@@ -117,3 +118,4 @@ euclidean_score = params.euclidean_score
 res
     .collectFile(name: 'res/${filename}__3ntMatched_euclidean-${euclidean_score}.bed')
     .println { "Finished, results saved in res/" }
+*/

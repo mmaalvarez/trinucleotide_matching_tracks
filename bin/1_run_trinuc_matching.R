@@ -28,8 +28,8 @@ args = commandArgs(trailingOnly=TRUE)
 ## tracks file path and name
 
 file_path = ifelse(interactive(),
-                  yes = "example.bed",
-                  no = args[1])
+                   yes = '/g/strcombio/fsupek_cancer3/malvarez/chromatin_info/DNA_repair__protein_binding/DNA_repair/BER/OGG1/chipseq/bed_hg19/gaps_score0/hg19_GSM_CP-Sample_Flag-OGG1-GOX-60-1_gaps-to-score-0.bed', #"example.bed",
+                   no = args[1])
 filename = gsub(".*\\/", "", file_path) %>% gsub("\\..*", "", .)
 
 ## parameter values for trinuc_matching()
@@ -137,6 +137,7 @@ if(exists("median_score")){
   mcols(full_tracks) = names(full_tracks)
   full_tracks = full_tracks %>% 
     as_tibble %>% 
+    filter(seqnames %in% paste0("chr", c(seq(1,22),"X","Y"))) %>% 
     mutate(seqnames = factor(seqnames, levels = paste0("chr", c(seq(1,22),"X","Y")))) %>% 
     arrange(seqnames, start) %>% 
     rename("name" = "X") %>% 
@@ -198,21 +199,31 @@ sequences = getSeq(BSgenome.Hsapiens.UCSC.hg19, ## WARNING: Assuming that coordi
                    names = full_tracks)
 gc()
 
+## collapse into 32 trinucleotides
 # get frequency of each trinucleotide per sequence, moving 1 nucleotide downstream each time
 trinuc32_freq = trinucleotideFrequency(sequences) %>%
-  as_tibble %>%
+  as_tibble
+
+# Identify columns where the 2nd character is A or G
+# trinucs that do not have a C or T in center, convert to reverse complement
+cols_to_transform = grep("^.([AG]).$", colnames(trinuc32_freq))
+
+# Apply the reverseComplement to those columns
+transformed_cols = sapply(colnames(trinuc32_freq)[cols_to_transform], function(name) {
+  as.character(Biostrings::reverseComplement(DNAString(name)))
+})
+
+# Replace those column names in the dataframe
+colnames(trinuc32_freq)[cols_to_transform] <- transformed_cols
+
+trinuc32_freq = data.frame(trinuc32_freq) %>% 
   rownames_to_column("id") %>% 
-  lazy_dt %>%
+  #lazy_dt %>%
   pivot_longer(cols = -id,
                names_to = 'trinuc32',
                values_to = "freq") %>%
-  group_by(id) %>%
-  ## collapse into 32 trinucleotides
-  # trinucs that do not have a C or T in center, convert to reverse complement
-  mutate(trinuc32 = ifelse(substr(trinuc32, start = 2, stop = 2) %in% c('A', 'G'),
-                           reverseComplement(trinuc32, case="upper"),
-                           trinuc32)) %>% 
   # sum up frequencies of each N(C|T)N & reverse complement pair, within id
+  mutate(trinuc32 = gsub("\\..", "", trinuc32)) %>% 
   group_by(id, trinuc32) %>%
   summarise(freq = sum(freq)) %>%
   ungroup %>% 
@@ -223,6 +234,7 @@ trinuc32_freq = trinucleotideFrequency(sequences) %>%
   arrange(as.numeric(id)) %>% 
   select(-id)
 gc()
+
 
 # bind trinuc32 freqs to original tracks
 full_tracks_trinuc32_freq = full_tracks %>%

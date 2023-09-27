@@ -4,6 +4,7 @@ library(dtplyr)
 library(GenomicRanges)
 library(rtracklayer)
 library(spgs)
+library(Biostrings)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("rename", "dplyr")
@@ -33,9 +34,9 @@ end_int = ifelse(interactive(),
   as.numeric
 
 
-## load files from 2nd process
+## load files from 1st process
 
-interactive_work_path = "./"
+interactive_work_path = "../work/0d/8150eb171672e746c785dfb41d2af8/"
 
 full_tracks_trinuc32_freq = ifelse(interactive(),
                                    yes = Sys.glob(paste0(interactive_work_path, "*_full_tracks_trinuc32_freq.tsv")),
@@ -87,7 +88,7 @@ matched_tracks_granges = full_tracks_trinuc32_freq %>%
   column_to_rownames("bin") %>% 
   map2_dfc(matched_tracks, ~ .x - .y)
 ## free up memory
-rm(full_tracks_trinuc32_freq) ; rm(matched_tracks) ; gc()
+rm(full_tracks_trinuc32_freq) ; gc()
 ## continue
 matched_tracks_granges = matched_tracks_granges %>% 
   # bin names back, and sequences
@@ -96,27 +97,42 @@ matched_tracks_granges = matched_tracks_granges %>%
   bind_cols(sequences)
 ## free up memory
 rm(bin_names) ; rm(sequences) ; gc()
-## continue
+
+### include reverse complement for each trinuc32, so it's actually trinuc64
+cols_to_transform = match(colnames(matched_tracks), colnames(matched_tracks_granges))
+# Apply the reverseComplement to those columns
+transformed_cols = sapply(colnames(matched_tracks_granges)[cols_to_transform], 
+                          function(name) {
+                            paste0(name, "|", as.character(reverseComplement(DNAString(name))))
+                            })
+# Replace those column names in the dataframe
+colnames(matched_tracks_granges)[cols_to_transform] <- transformed_cols
+
+### WARNING: updating the 'end' since the actual length of some sequences (obtained with BSGenome::getSeq()) do not match the start and end difference
 matched_tracks_granges = matched_tracks_granges %>% 
-  lazy_dt() %>% 
-  ### WARNING: updating the 'end' since the actual length of some sequences (obtained with BSGenome::getSeq()) do not match the start and end difference
   mutate(end = as.numeric(start) + nchar(`sequences`)) %>% 
   relocate(sequences) %>% relocate(name) %>% relocate(end) %>% relocate(start) %>% relocate(seqnames) %>% 
   pivot_longer(cols = !matches("seqnames") & !matches("start") & !matches("end") & !matches("name") & !matches("sequences"),
-               names_to = 'trinuc32',
+               names_to = 'trinuc64',
                values_to = 'removed_trinucs')
-## free up memory
 gc()
-## continue
+
+
+# keep separate for now the rows without removed trinucs
+matched_tracks_granges_no_rm_trinucs = matched_tracks_granges %>% 
+  filter(removed_trinucs == 0) %>% 
+  select(seqnames, start, end, name) %>% 
+  mutate(new_end = end)
+gc()
+
+## do the removing thing
 matched_tracks_granges = matched_tracks_granges %>%
-  # include reverse complement for each trinuc32, so it's actually trinuc64
-  mutate(trinuc32 = paste0(trinuc32, "|", reverseComplement(trinuc32, case="upper"))) %>% 
-  ## do the removing thing
-  as_tibble %>% 
+  # only do it in the ones that actually need to have trinucs removed
+  filter(removed_trinucs != 0) %>% #slice_sample(n=2) %>% 
   rowwise() %>% 
-  mutate(new_end = list(rm_n_trinucs_at_random_indices(`removed_trinucs`, `trinuc32`, `sequences`)))
-## free up memory
+  mutate(new_end = list(rm_n_trinucs_at_random_indices(`removed_trinucs`, `trinuc64`, `sequences`)))
 gc()
+
 ## continue
 matched_tracks_granges = matched_tracks_granges %>%
   lazy_dt %>% 
@@ -130,22 +146,17 @@ gc()
 matched_tracks_granges = matched_tracks_granges %>%
   as_tibble %>% 
   unnest(new_end) %>% 
-  lazy_dt %>% 
-  distinct()
-## free up memory
-gc()
-## continue
-matched_tracks_granges = matched_tracks_granges %>%
-  # in rows just before/at a region in which matching was not performed (typically "target" regions, as they are shorter), or at ending of chr, the new_end == end
-  mutate(new_end = ifelse(is.na(new_end),
-                          as.numeric(end),
-                          new_end))
-## free up memory
-gc()
-## continue
-matched_tracks_granges = matched_tracks_granges %>%
+  distinct()  %>% 
+  ## add back the rows without removed trinucs
+  bind_rows(matched_tracks_granges_no_rm_trinucs) %>% 
+  mutate(seqnames = factor(seqnames, levels = paste0("chr", c(seq(1:22), "X", "Y")))) %>% 
   arrange(seqnames, start, new_end) %>%
   group_by(seqnames, start, end, name) %>% 
+  lazy_dt 
+## free up memory
+gc()
+## continue
+matched_tracks_granges = matched_tracks_granges %>%
   # new_start is 4 nts after the new_end (i.e. skipping the removed trinucleotide) OF THE PREVIOUS ROW
   mutate(new_start = lag(new_end) + 4,
          # in rows at start of chr, the new_start == start

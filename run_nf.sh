@@ -25,8 +25,6 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --file_paths=$PWD/input/file_pat
 												--acceleration_score=100 \
 												--euclidean_change_ratio=0.1,1.1 \
 												--fast_progress_lfc_cutoff=-0.00001 \
-												--nranges=$nranges \
-												--fraction_length=$fraction_length \
 												--progress_its=1000 \
 												--time_process1=60 \
 												--time_process2=1 \
@@ -35,3 +33,5 @@ nextflow -log $PWD/log/nextflow.log run pipe.nf --file_paths=$PWD/input/file_pat
 												--utils=$PWD/bin/utils.R \
 												--good_mappability_regions=none \
 												-resume #\ -with-tower
+												#--nranges=$nranges \
+												#--fraction_length=$fraction_length \
